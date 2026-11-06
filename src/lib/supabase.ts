@@ -7,6 +7,10 @@ import {
   ScheduleItem,
 } from '../types';
 
+const DEFAULT_SUPABASE_URL = 'https://xgulmqmveplraidetpdy.supabase.co';
+const DEFAULT_SUPABASE_ANON_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndWxtcW12ZXBscmFpZGV0cGR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3MDUzODcsImV4cCI6MjEwNjI4MTM4N30.DefLnXRtSQCHKWCtQbT-BINQKshWnRp1vsAjWPxYDsM';
+
 const STORAGE_KEY_URL = 'fitcoach_supabase_url';
 const STORAGE_KEY_ANON_KEY = 'fitcoach_supabase_anon_key';
 
@@ -17,8 +21,8 @@ export function getSupabaseCredentials(): { url: string; anonKey: string; isConf
   const storedUrl = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY_URL) || '' : '';
   const storedKey = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY_ANON_KEY) || '' : '';
 
-  const url = (storedUrl || envUrl).trim();
-  const anonKey = (storedKey || envKey).trim();
+  const url = (storedUrl || envUrl || DEFAULT_SUPABASE_URL).trim();
+  const anonKey = (storedKey || envKey || DEFAULT_SUPABASE_ANON_KEY).trim();
 
   return {
     url,
@@ -77,6 +81,7 @@ export interface CloudUserData {
 
 // -------------------------------------------------------------
 // SERVIÇOS DE LEITURA & SINCRONIZAÇÃO COM SUPABASE
+// Tabelas com namespace fitcoach_* para isolamento e segurança
 // -------------------------------------------------------------
 
 export async function fetchUserDataFromSupabase(userId: string): Promise<CloudUserData | null> {
@@ -85,11 +90,11 @@ export async function fetchUserDataFromSupabase(userId: string): Promise<CloudUs
 
   try {
     const [profileRes, studentsRes, schedulesRes, paymentsRes, expensesRes] = await Promise.all([
-      client.from('profiles').select('*').eq('id', userId).maybeSingle(),
-      client.from('students').select('*').eq('user_id', userId),
-      client.from('schedules').select('*').eq('user_id', userId),
-      client.from('payments').select('*').eq('user_id', userId),
-      client.from('expenses').select('*').eq('user_id', userId),
+      client.from('fitcoach_profiles').select('*').eq('id', userId).maybeSingle(),
+      client.from('fitcoach_students').select('*').eq('user_id', userId),
+      client.from('fitcoach_schedules').select('*').eq('user_id', userId),
+      client.from('fitcoach_payments').select('*').eq('user_id', userId),
+      client.from('fitcoach_expenses').select('*').eq('user_id', userId),
     ]);
 
     const profile: PersonalProfile = profileRes.data
@@ -187,7 +192,7 @@ export async function uploadFullStateToSupabase(
 
   try {
     // 1. Profile
-    await client.from('profiles').upsert({
+    await client.from('fitcoach_profiles').upsert({
       id: userId,
       name: data.profile.name,
       phone: data.profile.phone,
@@ -218,7 +223,7 @@ export async function uploadFullStateToSupabase(
         workouts: s.workouts || [],
         evolution_history: s.evolutionHistory || [],
       }));
-      await client.from('students').upsert(studentRows);
+      await client.from('fitcoach_students').upsert(studentRows);
     }
 
     // 3. Schedules
@@ -232,7 +237,7 @@ export async function uploadFullStateToSupabase(
         end_time: item.endTime,
         attendance_status: item.attendanceStatus || 'scheduled',
       }));
-      await client.from('schedules').upsert(scheduleRows);
+      await client.from('fitcoach_schedules').upsert(scheduleRows);
     }
 
     // 4. Payments
@@ -248,7 +253,7 @@ export async function uploadFullStateToSupabase(
         paid_at: p.paidAt || null,
         classes_count: p.classesCount || 0,
       }));
-      await client.from('payments').upsert(paymentRows);
+      await client.from('fitcoach_payments').upsert(paymentRows);
     }
 
     // 5. Expenses
@@ -264,7 +269,7 @@ export async function uploadFullStateToSupabase(
         year: e.year,
         paid: e.paid,
       }));
-      await client.from('expenses').upsert(expenseRows);
+      await client.from('fitcoach_expenses').upsert(expenseRows);
     }
 
     return true;

@@ -1,15 +1,12 @@
 -- ==============================================================================
--- FITCOACH PRO - SUPABASE DATABASE SCHEMA & ROW LEVEL SECURITY (RLS)
+-- FITCOACH PRO - SUPABASE DATABASE SCHEMA (NAMESPACED: fitcoach_*)
 -- ==============================================================================
--- Instruções para rodar no Supabase:
--- 1. Abra o painel do Supabase: https://supabase.com/dashboard
--- 2. Selecione seu projeto
--- 3. Clique em "SQL Editor" no menu lateral esquerdo
--- 4. Cole todo este código e clique em "Run" (botão verde no canto inferior direito)
+-- Utiliza o prefixo fitcoach_* para garantir isolamento total e evitar conflito
+-- com quaisquer outras tabelas existentes no seu banco Supabase.
 -- ==============================================================================
 
 -- 1. TABELA DE PERFIS DOS PERSONAL TRAINERS
-create table if not exists public.profiles (
+create table if not exists public.fitcoach_profiles (
   id uuid primary key references auth.users on delete cascade,
   name text not null default 'Personal Trainer',
   phone text default '',
@@ -20,8 +17,8 @@ create table if not exists public.profiles (
   updated_at timestamptz default now()
 );
 
--- 2. TABELA DE ALUNOS
-create table if not exists public.students (
+-- 2. TABELA DE ALUNOS DO FITCOACH
+create table if not exists public.fitcoach_students (
   id text primary key,
   user_id uuid not null references auth.users on delete cascade,
   name text not null,
@@ -43,10 +40,10 @@ create table if not exists public.students (
 );
 
 -- 3. TABELA DE HORÁRIOS / GRADE SEMANAL
-create table if not exists public.schedules (
+create table if not exists public.fitcoach_schedules (
   id text primary key,
   user_id uuid not null references auth.users on delete cascade,
-  student_id text not null references public.students(id) on delete cascade,
+  student_id text not null references public.fitcoach_students(id) on delete cascade,
   day_of_week text not null,
   start_time text not null,
   end_time text not null,
@@ -55,10 +52,10 @@ create table if not exists public.schedules (
 );
 
 -- 4. TABELA DE MENSALIDADES E PAGAMENTOS
-create table if not exists public.payments (
+create table if not exists public.fitcoach_payments (
   id text primary key,
   user_id uuid not null references auth.users on delete cascade,
-  student_id text not null references public.students(id) on delete cascade,
+  student_id text not null references public.fitcoach_students(id) on delete cascade,
   month integer not null,
   year integer not null,
   amount numeric not null default 0,
@@ -69,7 +66,7 @@ create table if not exists public.payments (
 );
 
 -- 5. TABELA DE DESPESAS DO PERSONAL
-create table if not exists public.expenses (
+create table if not exists public.fitcoach_expenses (
   id text primary key,
   user_id uuid not null references auth.users on delete cascade,
   description text not null,
@@ -86,40 +83,40 @@ create table if not exists public.expenses (
 -- HABILITAR ROW LEVEL SECURITY (RLS)
 -- Garante que cada personal trainer só enxergue e altere seus próprios dados
 -- ==============================================================================
-alter table public.profiles enable row level security;
-alter table public.students enable row level security;
-alter table public.schedules enable row level security;
-alter table public.payments enable row level security;
-alter table public.expenses enable row level security;
+alter table public.fitcoach_profiles enable row level security;
+alter table public.fitcoach_students enable row level security;
+alter table public.fitcoach_schedules enable row level security;
+alter table public.fitcoach_payments enable row level security;
+alter table public.fitcoach_expenses enable row level security;
 
 -- Políticas de acesso:
-drop policy if exists "Users manage own profile" on public.profiles;
-create policy "Users manage own profile" on public.profiles
+drop policy if exists "Users manage own fitcoach profile" on public.fitcoach_profiles;
+create policy "Users manage own fitcoach profile" on public.fitcoach_profiles
   for all using (auth.uid() = id) with check (auth.uid() = id);
 
-drop policy if exists "Users manage own students" on public.students;
-create policy "Users manage own students" on public.students
+drop policy if exists "Users manage own fitcoach students" on public.fitcoach_students;
+create policy "Users manage own fitcoach students" on public.fitcoach_students
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
-drop policy if exists "Users manage own schedules" on public.schedules;
-create policy "Users manage own schedules" on public.schedules
+drop policy if exists "Users manage own fitcoach schedules" on public.fitcoach_schedules;
+create policy "Users manage own fitcoach schedules" on public.fitcoach_schedules
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
-drop policy if exists "Users manage own payments" on public.payments;
-create policy "Users manage own payments" on public.payments
+drop policy if exists "Users manage own fitcoach payments" on public.fitcoach_payments;
+create policy "Users manage own fitcoach payments" on public.fitcoach_payments
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
-drop policy if exists "Users manage own expenses" on public.expenses;
-create policy "Users manage own expenses" on public.expenses
+drop policy if exists "Users manage own fitcoach expenses" on public.fitcoach_expenses;
+create policy "Users manage own fitcoach expenses" on public.fitcoach_expenses
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 -- ==============================================================================
--- TRIGGER PARA CRIAR PERFIL AUTOMATICAMENTE AO REGISTRAR NOVO USUÁRIO
+-- TRIGGER PARA CRIAR PERFIL FITCOACH AUTOMATICAMENTE AO REGISTRAR NOVO USUÁRIO
 -- ==============================================================================
-create or replace function public.handle_new_user()
+create or replace function public.handle_new_fitcoach_user()
 returns trigger as $$
 begin
-  insert into public.profiles (id, name, plan)
+  insert into public.fitcoach_profiles (id, name, plan)
   values (
     new.id,
     coalesce(new.raw_user_meta_data->>'name', 'Personal Trainer'),
@@ -130,13 +127,13 @@ begin
 end;
 $$ language plpgsql security definer;
 
-drop trigger if exists on_auth_user_created on auth.users;
-create trigger on_auth_user_created
+drop trigger if exists on_auth_user_created_fitcoach on auth.users;
+create trigger on_auth_user_created_fitcoach
   after insert on auth.users
-  for each row execute procedure public.handle_new_user();
+  for each row execute procedure public.handle_new_fitcoach_user();
 
 -- Índices de alta performance
-create index if not exists idx_students_user on public.students(user_id);
-create index if not exists idx_payments_user_month_year on public.payments(user_id, year, month);
-create index if not exists idx_expenses_user_month_year on public.expenses(user_id, year, month);
-create index if not exists idx_schedules_user on public.schedules(user_id);
+create index if not exists idx_fitcoach_students_user on public.fitcoach_students(user_id);
+create index if not exists idx_fitcoach_payments_user_month_year on public.fitcoach_payments(user_id, year, month);
+create index if not exists idx_fitcoach_expenses_user_month_year on public.fitcoach_expenses(user_id, year, month);
+create index if not exists idx_fitcoach_schedules_user on public.fitcoach_schedules(user_id);
