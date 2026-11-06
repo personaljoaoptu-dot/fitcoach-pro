@@ -75,7 +75,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
             }`}
           >
             <span className="text-[11px] block font-medium">Mensal</span>
-            <span className="text-base font-bold text-white block mt-0.5">R$ 29,90</span>
+            <span className="text-base font-bold text-white block mt-0.5">R$ 19,90</span>
             <span className="text-[10px] text-zinc-500">Cobrado todo mês</span>
           </button>
 
@@ -88,8 +88,8 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
             }`}
           >
             <span className="text-[11px] block font-medium">Anual</span>
-            <span className="text-base font-bold text-white block mt-0.5">R$ 249,00</span>
-            <span className="text-[10px] text-emerald-400">Economize 30%</span>
+            <span className="text-base font-bold text-white block mt-0.5">R$ 149,00</span>
+            <span className="text-[10px] text-emerald-400">R$ 12,41/mês (-37%)</span>
           </button>
         </div>
 
@@ -98,7 +98,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
           onClick={onConfirmUpgrade}
           className="w-full py-3 px-4 rounded-xl font-semibold text-xs bg-white hover:bg-zinc-200 text-zinc-950 transition active:scale-95"
         >
-          {billingCycle === 'monthly' ? 'Assinar por R$ 29,90/mês' : 'Assinar por R$ 249,00/ano'}
+          {billingCycle === 'monthly' ? 'Assinar por R$ 19,90/mês' : 'Assinar por R$ 149,00/ano'}
         </button>
 
         <p className="text-center text-[11px] text-zinc-500 mt-3">

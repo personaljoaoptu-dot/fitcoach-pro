@@ -156,7 +156,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
             onClick={onOpenUpgrade}
             className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-zinc-100 hover:bg-white text-zinc-900 transition whitespace-nowrap"
           >
-            Ver planos (R$ 29,90)
+            Ver planos (R$ 19,90)
           </button>
         </div>
       )}
