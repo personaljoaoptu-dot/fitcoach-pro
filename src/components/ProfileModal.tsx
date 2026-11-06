@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { X, Download, FileSpreadsheet, Upload, ShieldCheck } from 'lucide-react';
+import { X, Download, FileSpreadsheet, Upload, ShieldCheck, Database, CloudUpload } from 'lucide-react';
 import { PersonalProfile } from '../types';
 import { exportBackupAsJson, exportStudentsAsCsv } from '../utils/storage';
+import { getSupabaseCredentials } from '../lib/supabase';
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -9,6 +10,9 @@ interface ProfileModalProps {
   profile: PersonalProfile;
   onSaveProfile: (profile: PersonalProfile) => void;
   onRestoreBackup: (jsonContent: string) => void;
+  onOpenSupabaseConfig: () => void;
+  onSyncToSupabase?: () => void;
+  userEmail?: string | null;
 }
 
 export const ProfileModal: React.FC<ProfileModalProps> = ({
@@ -17,8 +21,12 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   profile,
   onSaveProfile,
   onRestoreBackup,
+  onOpenSupabaseConfig,
+  onSyncToSupabase,
+  userEmail,
 }) => {
   const [formData, setFormData] = useState<PersonalProfile>({ ...profile });
+  const { isConfigured } = getSupabaseCredentials();
 
   if (!isOpen) return null;
 
@@ -55,9 +63,57 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 
         <h2 className="text-base font-bold text-white mb-1">Configurações & Backup</h2>
         <p className="text-xs text-zinc-400 mb-5">
-          Configure sua chave Pix e exporte cópias de segurança dos seus alunos
+          Configure sua chave Pix, banco de dados Supabase e exportações
         </p>
 
+        {/* 1. SEÇÃO BANCO DE DADOS & NUVEM SUPABASE */}
+        <div className="mb-5 p-3.5 bg-zinc-950 border border-zinc-800 rounded-xl space-y-2.5">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-white flex items-center gap-1.5">
+              <Database className="w-3.5 h-3.5 text-emerald-400" />
+              Banco em Nuvem (Supabase)
+            </span>
+            <span
+              className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                isConfigured
+                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                  : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+              }`}
+            >
+              {isConfigured ? 'Conectado' : 'Não conectado'}
+            </span>
+          </div>
+
+          <p className="text-[11px] text-zinc-400">
+            {userEmail
+              ? `Autenticado como: ${userEmail}`
+              : 'Conecte seu projeto Supabase para salvar dados na nuvem e habilitar login.'}
+          </p>
+
+          <div className="flex items-center gap-2 pt-1">
+            <button
+              type="button"
+              onClick={onOpenSupabaseConfig}
+              className="flex-1 py-1.5 px-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-200 text-xs font-medium transition"
+            >
+              {isConfigured ? 'Ver / Trocar Chaves' : 'Configurar Chaves Supabase'}
+            </button>
+
+            {userEmail && onSyncToSupabase && (
+              <button
+                type="button"
+                onClick={onSyncToSupabase}
+                className="py-1.5 px-2.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-400 text-xs font-medium flex items-center gap-1 transition"
+                title="Subir todos os dados locais atuais para o banco de dados"
+              >
+                <CloudUpload className="w-3.5 h-3.5" />
+                <span>Sincronizar</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* 2. FORMULÁRIO DE DADOS PESSOAIS E PIX */}
         <form onSubmit={handleSubmit} className="space-y-3.5 text-xs pb-5 border-b border-zinc-800">
           <div>
             <label className="block font-medium text-zinc-300 mb-1">Seu nome ou marca</label>
@@ -124,10 +180,10 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
           </div>
         </form>
 
-        {/* SEÇÃO DE BACKUP & EXPORTAÇÃO */}
+        {/* 3. SEÇÃO DE BACKUP LOCAL & EXPORTAÇÃO */}
         <div className="pt-4 space-y-3">
           <div>
-            <span className="text-xs font-bold text-white block">Cópia de Segurança & Exportação</span>
+            <span className="text-xs font-bold text-white block">Cópia de Segurança Local</span>
             <p className="text-[11px] text-zinc-400 mt-0.5">
               Baixe os dados para nunca perder nada ou envie para o Excel
             </p>
@@ -169,7 +225,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 
           <div className="flex items-center gap-1 text-[10px] text-zinc-500 justify-center">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-            <span>Seus dados ficam salvos com segurança no seu dispositivo</span>
+            <span>Seus dados ficam protegidos com criptografia</span>
           </div>
         </div>
       </div>

@@ -39,6 +39,13 @@ import { ProfileModal } from './components/ProfileModal';
 import { StudentModal } from './components/StudentModal';
 import { ScheduleModal } from './components/ScheduleModal';
 import { StudentDetailModal } from './components/StudentDetailModal';
+import { AuthScreen } from './components/AuthScreen';
+import { SupabaseConfigModal } from './components/SupabaseConfigModal';
+import {
+  getSupabaseClient,
+  fetchUserDataFromSupabase,
+  uploadFullStateToSupabase,
+} from './lib/supabase';
 
 export const App: React.FC = () => {
   const [profile, setProfile] = useState<PersonalProfile>(loadProfile);
@@ -48,6 +55,13 @@ export const App: React.FC = () => {
   const [schedule, setSchedule] = useState<ScheduleItem[]>(loadSchedule);
 
   const [activeTab, setActiveTab] = useState<'dashboard' | 'alunos' | 'financeiro' | 'agenda'>('dashboard');
+
+  // Auth & Cloud State
+  const [currentUser, setCurrentUser] = useState<any | null>(null);
+  const [isGuestMode, setIsGuestMode] = useState<boolean>(() => {
+    return localStorage.getItem('fitcoach_guest_mode') === 'true';
+  });
+  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
 
   // Modals
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
@@ -62,6 +76,87 @@ export const App: React.FC = () => {
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const loadCloudData = async (userId: string) => {
+    try {
+      const cloudData = await fetchUserDataFromSupabase(userId);
+      if (cloudData) {
+        if (cloudData.students && cloudData.students.length > 0) {
+          setStudents(cloudData.students);
+          setProfile(cloudData.profile);
+          setPayments(cloudData.payments);
+          setExpenses(cloudData.expenses);
+          setSchedule(cloudData.schedule);
+          showToast('Dados sincronizados do Supabase');
+        } else {
+          // Upload initial state if cloud is empty
+          await uploadFullStateToSupabase(userId, {
+            profile,
+            students,
+            payments,
+            expenses,
+            schedule,
+          });
+        }
+      }
+    } catch (e) {
+      console.error('Erro ao carregar dados da nuvem:', e);
+    }
+  };
+
+  // Check auth session
+  useEffect(() => {
+    const client = getSupabaseClient();
+    if (!client) return;
+
+    client.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setCurrentUser(session.user);
+        loadCloudData(session.user.id);
+      }
+    });
+
+    const {
+      data: { subscription },
+    } = client.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setCurrentUser(session.user);
+        loadCloudData(session.user.id);
+      } else {
+        setCurrentUser(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleSignOut = async () => {
+    const client = getSupabaseClient();
+    if (client) {
+      await client.auth.signOut();
+    }
+    setCurrentUser(null);
+    setIsGuestMode(true);
+    localStorage.setItem('fitcoach_guest_mode', 'true');
+    showToast('Você saiu da sua conta');
+  };
+
+  const handleManualSyncToSupabase = async () => {
+    if (!currentUser) return;
+    showToast('Sincronizando com a nuvem...');
+    const success = await uploadFullStateToSupabase(currentUser.id, {
+      profile,
+      students,
+      payments,
+      expenses,
+      schedule,
+    });
+    if (success) {
+      showToast('Dados salvos no Supabase com sucesso!');
+    } else {
+      showToast('Erro ao sincronizar com Supabase.');
+    }
   };
 
   useEffect(() => {
@@ -365,6 +460,33 @@ export const App: React.FC = () => {
     }
   };
 
+  if (!currentUser && !isGuestMode) {
+    return (
+      <>
+        <AuthScreen
+          onLoginSuccess={(user) => {
+            setCurrentUser(user);
+            setIsGuestMode(false);
+            localStorage.removeItem('fitcoach_guest_mode');
+            loadCloudData(user.id);
+          }}
+          onContinueGuest={() => {
+            setIsGuestMode(true);
+            localStorage.setItem('fitcoach_guest_mode', 'true');
+          }}
+          onOpenConfig={() => setIsConfigModalOpen(true)}
+        />
+        <SupabaseConfigModal
+          isOpen={isConfigModalOpen}
+          onClose={() => setIsConfigModalOpen(false)}
+          onConnected={() => {
+            showToast('Supabase conectado com sucesso!');
+          }}
+        />
+      </>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col font-sans pb-24 sm:pb-8">
       {/* Toast Alert */}
@@ -377,12 +499,20 @@ export const App: React.FC = () => {
       {/* Header */}
       <Header
         profile={profile}
+        userEmail={currentUser?.email || null}
+        isCloudConnected={Boolean(currentUser)}
         onOpenUpgrade={() => {
           setUpgradeReason(undefined);
           setIsUpgradeModalOpen(true);
         }}
         onOpenProfile={() => setIsProfileModalOpen(true)}
         onTogglePlanSimulation={handleTogglePlanSimulation}
+        onSignOut={handleSignOut}
+        onOpenAuth={() => {
+          setIsGuestMode(false);
+          localStorage.removeItem('fitcoach_guest_mode');
+        }}
+        onOpenDbConfig={() => setIsConfigModalOpen(true)}
       />
 
       {/* AdMob Banner (FREE plan only) */}
@@ -561,6 +691,17 @@ export const App: React.FC = () => {
           showToast('Dados atualizados');
         }}
         onRestoreBackup={handleRestoreBackup}
+        onOpenSupabaseConfig={() => setIsConfigModalOpen(true)}
+        onSyncToSupabase={handleManualSyncToSupabase}
+        userEmail={currentUser?.email || null}
+      />
+
+      <SupabaseConfigModal
+        isOpen={isConfigModalOpen}
+        onClose={() => setIsConfigModalOpen(false)}
+        onConnected={() => {
+          showToast('Supabase conectado com sucesso!');
+        }}
       />
 
       <StudentModal
