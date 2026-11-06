@@ -7,10 +7,6 @@ import {
   ScheduleItem,
 } from '../types';
 
-const DEFAULT_SUPABASE_URL = 'https://xgulmqmveplraidetpdy.supabase.co';
-const DEFAULT_SUPABASE_ANON_KEY =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndWxtcW12ZXBscmFpZGV0cGR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3MDUzODcsImV4cCI6MjEwNjI4MTM4N30.DefLnXRtSQCHKWCtQbT-BINQKshWnRp1vsAjWPxYDsM';
-
 const STORAGE_KEY_URL = 'fitcoach_supabase_url';
 const STORAGE_KEY_ANON_KEY = 'fitcoach_supabase_anon_key';
 
@@ -21,8 +17,8 @@ export function getSupabaseCredentials(): { url: string; anonKey: string; isConf
   const storedUrl = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY_URL) || '' : '';
   const storedKey = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY_ANON_KEY) || '' : '';
 
-  const url = (storedUrl || envUrl || DEFAULT_SUPABASE_URL).trim();
-  const anonKey = (storedKey || envKey || DEFAULT_SUPABASE_ANON_KEY).trim();
+  const url = (storedUrl || envUrl).trim();
+  const anonKey = (storedKey || envKey).trim();
 
   return {
     url,
