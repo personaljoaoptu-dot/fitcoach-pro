@@ -86,15 +86,6 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Quick simulation button to test the UX */}
-          <button
-            onClick={onTogglePlanSimulation}
-            className="hidden md:inline-flex text-[11px] px-2.5 py-1 rounded-md bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 border border-zinc-800 transition"
-            title="Alternar entre plano Free e Pro para testar"
-          >
-            Modo: <span className="font-semibold text-zinc-200 ml-1">{isPro ? 'Pro' : 'Free'}</span>
-          </button>
-
           {!isPro && (
             <button
               onClick={onOpenUpgrade}

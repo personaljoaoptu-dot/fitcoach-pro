@@ -90,14 +90,14 @@ export const App: React.FC = () => {
           setSchedule(cloudData.schedule);
           showToast('Dados sincronizados do Supabase');
         } else {
-          // Upload initial state if cloud is empty
-          await uploadFullStateToSupabase(userId, {
-            profile,
-            students,
-            payments,
-            expenses,
-            schedule,
-          });
+          // New cloud account: start completely clean
+          if (cloudData.profile) {
+            setProfile(cloudData.profile);
+          }
+          setStudents([]);
+          setPayments([]);
+          setExpenses([]);
+          setSchedule([]);
         }
       }
     } catch (e) {
@@ -514,16 +514,6 @@ export const App: React.FC = () => {
         }}
         onOpenDbConfig={() => setIsConfigModalOpen(true)}
       />
-
-      {/* AdMob Banner (FREE plan only) */}
-      {profile.plan === 'free' && (
-        <AdBanner
-          onUpgrade={() => {
-            setUpgradeReason('Remova os anúncios com a assinatura Pro');
-            setIsUpgradeModalOpen(true);
-          }}
-        />
-      )}
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-4">
