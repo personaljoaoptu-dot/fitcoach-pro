@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Download, FileSpreadsheet, Upload, ShieldCheck, Database, CloudUpload } from 'lucide-react';
+import { X, Download, FileSpreadsheet, Upload, ShieldCheck, Database, CloudUpload, Trash2 } from 'lucide-react';
 import { PersonalProfile } from '../types';
 import { exportBackupAsJson, exportStudentsAsCsv } from '../utils/storage';
 import { getSupabaseCredentials } from '../lib/supabase';
@@ -12,6 +12,7 @@ interface ProfileModalProps {
   onRestoreBackup: (jsonContent: string) => void;
   onOpenSupabaseConfig: () => void;
   onSyncToSupabase?: () => void;
+  onResetAllData?: () => void;
   userEmail?: string | null;
 }
 
@@ -23,6 +24,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   onRestoreBackup,
   onOpenSupabaseConfig,
   onSyncToSupabase,
+  onResetAllData,
   userEmail,
 }) => {
   const [formData, setFormData] = useState<PersonalProfile>({ ...profile });
@@ -222,6 +224,20 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               />
             </label>
           </div>
+
+          {/* Botão de Zerar / Limpar Tudo */}
+          {onResetAllData && (
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={onResetAllData}
+                className="w-full p-2.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-400 hover:text-rose-300 text-xs font-medium flex items-center justify-center gap-1.5 transition"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Zerar todos os alunos e valores (Começar do zero)</span>
+              </button>
+            </div>
+          )}
 
           <div className="flex items-center gap-1 text-[10px] text-zinc-500 justify-center">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />

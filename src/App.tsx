@@ -78,6 +78,45 @@ export const App: React.FC = () => {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
+  // One-time auto purge of legacy mock data in browser
+  useEffect(() => {
+    const isCleaned = localStorage.getItem('fitcoach_purged_final_v1');
+    if (!isCleaned) {
+      localStorage.removeItem('fitcoach_students');
+      localStorage.removeItem('fitcoach_payments');
+      localStorage.removeItem('fitcoach_expenses');
+      localStorage.removeItem('fitcoach_schedule');
+      localStorage.setItem('fitcoach_purged_final_v1', 'true');
+      setStudents([]);
+      setPayments([]);
+      setExpenses([]);
+      setSchedule([]);
+    }
+  }, []);
+
+  const handleResetAllData = () => {
+    if (window.confirm('Tem certeza de que deseja apagar todos os alunos e valores salvos e começar do zero?')) {
+      localStorage.removeItem('fitcoach_students');
+      localStorage.removeItem('fitcoach_payments');
+      localStorage.removeItem('fitcoach_expenses');
+      localStorage.removeItem('fitcoach_schedule');
+      setStudents([]);
+      setPayments([]);
+      setExpenses([]);
+      setSchedule([]);
+      if (currentUser) {
+        uploadFullStateToSupabase(currentUser.id, {
+          profile,
+          students: [],
+          payments: [],
+          expenses: [],
+          schedule: [],
+        });
+      }
+      showToast('Aplicativo zerado com sucesso');
+    }
+  };
+
   const loadCloudData = async (userId: string) => {
     try {
       const cloudData = await fetchUserDataFromSupabase(userId);
@@ -683,6 +722,7 @@ export const App: React.FC = () => {
         onRestoreBackup={handleRestoreBackup}
         onOpenSupabaseConfig={() => setIsConfigModalOpen(true)}
         onSyncToSupabase={handleManualSyncToSupabase}
+        onResetAllData={handleResetAllData}
         userEmail={currentUser?.email || null}
       />
 
