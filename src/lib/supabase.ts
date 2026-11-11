@@ -278,3 +278,64 @@ export async function uploadFullStateToSupabase(
     return false;
   }
 }
+
+// -------------------------------------------------------------
+// PORTAL PÚBLICO DO ALUNO (Leitura direta por ID do aluno)
+// Permite que o aluno abra sua rotina no celular via WhatsApp
+// -------------------------------------------------------------
+export async function fetchStudentPortalData(
+  studentId: string
+): Promise<{ student: Student; trainerName: string; trainerPhone: string } | null> {
+  const client = getSupabaseClient();
+  if (!client) return null;
+
+  try {
+    const { data, error } = await client
+      .from('fitcoach_students')
+      .select('*')
+      .eq('id', studentId)
+      .maybeSingle();
+
+    if (error || !data) return null;
+
+    const student: Student = {
+      id: data.id,
+      name: data.name,
+      phone: data.phone || '',
+      modality: data.modality || 'presencial',
+      billingType: data.billing_type || 'mensal',
+      monthlyFee: Number(data.monthly_fee) || 0,
+      pricePerClass: Number(data.price_per_class) || 0,
+      classesDoneMonth: Number(data.classes_done_month) || 0,
+      attendedDates: Array.isArray(data.attended_dates) ? data.attended_dates : [],
+      dueDay: Number(data.due_day) || 10,
+      status: data.status || 'active',
+      pendingMakeups: Number(data.pending_makeups) || 0,
+      notes: data.notes || '',
+      workoutDriveUrl: data.workout_drive_url || '',
+      workouts: Array.isArray(data.workouts) ? data.workouts : [],
+      evolutionHistory: Array.isArray(data.evolution_history) ? data.evolution_history : [],
+      createdAt: data.created_at || new Date().toISOString(),
+    };
+
+    let trainerName = 'FitCoach Pro';
+    let trainerPhone = '';
+    if (data.user_id) {
+      const profileRes = await client
+        .from('fitcoach_profiles')
+        .select('name, phone')
+        .eq('id', data.user_id)
+        .maybeSingle();
+
+      if (profileRes.data) {
+        trainerName = profileRes.data.name || 'FitCoach Pro';
+        trainerPhone = profileRes.data.phone || '';
+      }
+    }
+
+    return { student, trainerName, trainerPhone };
+  } catch (err) {
+    console.error('Erro ao buscar dados do portal do aluno:', err);
+    return null;
+  }
+}

@@ -17,6 +17,9 @@ import {
   ExternalLink,
   Edit2,
   Copy,
+  Check,
+  Smartphone,
+  Share2,
 } from 'lucide-react';
 import { Student, EvolutionRecord, EvolutionType, WorkoutDivision } from '../types';
 import { cleanPhoneNumber, formatPhoneDisplay } from '../utils/whatsapp';
@@ -65,11 +68,33 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
   const [workoutMuscleGroup, setWorkoutMuscleGroup] = useState('');
   const [workoutExercises, setWorkoutExercises] = useState('');
   const [driveUrl, setDriveUrl] = useState(student?.workoutDriveUrl || '');
+  const [copiedPortal, setCopiedPortal] = useState(false);
 
   // Retroactive date
   const [retroactiveDate, setRetroactiveDate] = useState(() => new Date().toISOString().split('T')[0]);
 
   if (!isOpen || !student) return null;
+
+  const getStudentPortalUrl = () => {
+    const origin = window.location.origin;
+    const pathname = window.location.pathname;
+    return `${origin}${pathname}?aluno=${student.id}`;
+  };
+
+  const handleCopyPortalLink = () => {
+    navigator.clipboard.writeText(getStudentPortalUrl());
+    setCopiedPortal(true);
+    setTimeout(() => setCopiedPortal(false), 2500);
+  };
+
+  const handleSharePortalWhatsApp = () => {
+    const url = getStudentPortalUrl();
+    const firstName = student.name.split(' ')[0];
+    const text = encodeURIComponent(
+      `Olá ${firstName}! Preparei sua ficha de treinos no FitCoach. Acesse diretamente pelo seu celular:\n\n${url}\n\nBom treino! 💪`
+    );
+    window.open(`https://wa.me/${cleanPhoneNumber(student.phone)}?text=${text}`, '_blank');
+  };
 
   const directWa = `https://wa.me/${cleanPhoneNumber(student.phone)}`;
   const attendedDates = (student.attendedDates || []).slice().sort().reverse();
@@ -320,6 +345,53 @@ Bora com tudo! 💪`;
         {/* TAB 1: FICHA DE TREINO (ROTINA A / B / C / DRIVE) */}
         {activeTab === 'treinos' && (
           <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+            {/* Compartilhar Portal Web do Aluno */}
+            <div className="bg-emerald-950/30 border border-emerald-500/25 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+                  <Smartphone className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-white block">Portal Web do Aluno</span>
+                  <span className="text-[11px] text-zinc-400 block leading-tight">
+                    O aluno abre no celular para marcar exercícios e avisar no WhatsApp.
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleCopyPortalLink}
+                  className="flex-1 sm:flex-initial px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium transition flex items-center justify-center gap-1.5"
+                  title="Copiar link direto da ficha"
+                >
+                  {copiedPortal ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-zinc-400" />}
+                  <span>{copiedPortal ? 'Copiado!' : 'Copiar Link'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSharePortalWhatsApp}
+                  className="flex-1 sm:flex-initial px-3 py-1.5 rounded-lg bg-[#25D366] hover:bg-[#20ba59] text-zinc-950 text-xs font-semibold transition flex items-center justify-center gap-1.5 shadow-xs"
+                  title="Enviar link formatado no WhatsApp do aluno"
+                >
+                  <MessageCircle className="w-3.5 h-3.5" />
+                  <span>Enviar WhatsApp</span>
+                </button>
+
+                <a
+                  href={getStudentPortalUrl()}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition"
+                  title="Testar e abrir portal em nova aba"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+              </div>
+            </div>
+
             {/* Link externo / Drive */}
             <form onSubmit={handleSaveDriveUrl} className="bg-zinc-950 border border-zinc-800 rounded-xl p-3 flex items-center gap-2">
               <ExternalLink className="w-4 h-4 text-zinc-400 shrink-0" />

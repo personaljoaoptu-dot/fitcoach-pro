@@ -35,6 +35,9 @@ import { StudentsTab } from './components/StudentsTab';
 import { FinancialTab } from './components/FinancialTab';
 import { ScheduleTab } from './components/ScheduleTab';
 import { UpgradeModal } from './components/UpgradeModal';
+import { CheckoutModal } from './components/CheckoutModal';
+import { LandingPage } from './components/LandingPage';
+import { StudentPortal } from './components/StudentPortal';
 import { ProfileModal } from './components/ProfileModal';
 import { StudentModal } from './components/StudentModal';
 import { ScheduleModal } from './components/ScheduleModal';
@@ -45,6 +48,7 @@ import {
   getSupabaseClient,
   fetchUserDataFromSupabase,
   uploadFullStateToSupabase,
+  fetchStudentPortalData,
 } from './lib/supabase';
 
 export const App: React.FC = () => {
@@ -66,6 +70,18 @@ export const App: React.FC = () => {
   // Modals
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [upgradeReason, setUpgradeReason] = useState<string | undefined>();
+  const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
+  const [checkoutDefaultPlan, setCheckoutDefaultPlan] = useState<'monthly' | 'yearly'>('monthly');
+
+  // Public Landing & Student Portal
+  const [showLanding, setShowLanding] = useState(false);
+  const [portalStudent, setPortalStudent] = useState<Student | null>(null);
+  const [portalTrainer, setPortalTrainer] = useState<{ name: string; phone: string }>({
+    name: 'FitCoach Pro',
+    phone: '',
+  });
+  const [isPortalLoading, setIsPortalLoading] = useState(false);
+
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
   const [studentToEdit, setStudentToEdit] = useState<Student | null>(null);
@@ -77,6 +93,34 @@ export const App: React.FC = () => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
   };
+
+  // Check URL parameters for Portal (?aluno=<id>) or Landing (?view=landing)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const alunoId = params.get('aluno');
+    const viewParam = params.get('view');
+
+    if (viewParam === 'landing') {
+      setShowLanding(true);
+    }
+
+    if (alunoId) {
+      const localMatch = students.find((s) => s.id === alunoId);
+      if (localMatch) {
+        setPortalStudent(localMatch);
+        setPortalTrainer({ name: profile.name, phone: profile.phone });
+      } else {
+        setIsPortalLoading(true);
+        fetchStudentPortalData(alunoId).then((res) => {
+          setIsPortalLoading(false);
+          if (res) {
+            setPortalStudent(res.student);
+            setPortalTrainer({ name: res.trainerName, phone: res.trainerPhone });
+          }
+        });
+      }
+    }
+  }, [students, profile]);
 
   // One-time auto purge of legacy mock data in browser
   useEffect(() => {
@@ -229,10 +273,38 @@ export const App: React.FC = () => {
     );
   };
 
-  const handleConfirmUpgrade = () => {
-    setProfile((prev) => ({ ...prev, plan: 'pro' }));
+  const handleOpenCheckout = (plan: 'monthly' | 'yearly' = 'monthly') => {
+    setCheckoutDefaultPlan(plan);
     setIsUpgradeModalOpen(false);
-    showToast('Plano Pro ativado com sucesso.');
+    setIsCheckoutModalOpen(true);
+  };
+
+  const handleCheckoutSuccess = async () => {
+    const updated: PersonalProfile = { ...profile, plan: 'pro' };
+    setProfile(updated);
+    saveProfile(updated);
+    setIsCheckoutModalOpen(false);
+    setIsUpgradeModalOpen(false);
+    showToast('🎉 Parabéns! Plano FitCoach Pro ativado com sucesso. Alunos ilimitados liberados!');
+
+    if (currentUser) {
+      const client = getSupabaseClient();
+      if (client) {
+        await client.from('fitcoach_profiles').upsert({
+          id: currentUser.id,
+          name: profile.name,
+          phone: profile.phone,
+          pix_key: profile.pixKey,
+          pix_key_type: profile.pixKeyType,
+          plan: 'pro',
+          updated_at: new Date().toISOString(),
+        });
+      }
+    }
+  };
+
+  const handleConfirmUpgrade = () => {
+    handleOpenCheckout('monthly');
   };
 
   const handleOpenNewStudent = () => {
@@ -499,6 +571,60 @@ export const App: React.FC = () => {
     }
   };
 
+  // 1. Visão do Portal do Aluno (se acessado via link ?aluno=<id>)
+  if (isPortalLoading) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center text-zinc-100 p-4">
+        <div className="w-10 h-10 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4" />
+        <p className="text-sm font-semibold text-zinc-200">Carregando ficha de treino...</p>
+        <p className="text-xs text-zinc-500 mt-1">FitCoach Pro</p>
+      </div>
+    );
+  }
+
+  if (portalStudent) {
+    return (
+      <StudentPortal
+        student={portalStudent}
+        trainerName={portalTrainer.name}
+        trainerPhone={portalTrainer.phone}
+        onExit={() => {
+          window.history.replaceState({}, '', window.location.pathname);
+          setPortalStudent(null);
+        }}
+      />
+    );
+  }
+
+  // 2. Visão da Landing Page pública / Apresentação
+  if (showLanding) {
+    return (
+      <>
+        <LandingPage
+          onStartFree={() => {
+            setShowLanding(false);
+            setIsGuestMode(true);
+            localStorage.setItem('fitcoach_guest_mode', 'true');
+          }}
+          onLogin={() => {
+            setShowLanding(false);
+            setIsGuestMode(false);
+            localStorage.removeItem('fitcoach_guest_mode');
+          }}
+          onOpenCheckout={(plan) => handleOpenCheckout(plan || 'monthly')}
+        />
+        <CheckoutModal
+          isOpen={isCheckoutModalOpen}
+          onClose={() => setIsCheckoutModalOpen(false)}
+          onSuccess={handleCheckoutSuccess}
+          trainerEmail={currentUser?.email || null}
+          defaultPlan={checkoutDefaultPlan}
+        />
+      </>
+    );
+  }
+
+  // 3. Tela de Autenticação / Modo Visitante
   if (!currentUser && !isGuestMode) {
     return (
       <>
@@ -514,6 +640,7 @@ export const App: React.FC = () => {
             localStorage.setItem('fitcoach_guest_mode', 'true');
           }}
           onOpenConfig={() => setIsConfigModalOpen(true)}
+          onViewLanding={() => setShowLanding(true)}
         />
         <SupabaseConfigModal
           isOpen={isConfigModalOpen}
@@ -542,7 +669,7 @@ export const App: React.FC = () => {
         isCloudConnected={Boolean(currentUser)}
         onOpenUpgrade={() => {
           setUpgradeReason(undefined);
-          setIsUpgradeModalOpen(true);
+          handleOpenCheckout('monthly');
         }}
         onOpenProfile={() => setIsProfileModalOpen(true)}
         onTogglePlanSimulation={handleTogglePlanSimulation}
@@ -552,6 +679,7 @@ export const App: React.FC = () => {
           localStorage.removeItem('fitcoach_guest_mode');
         }}
         onOpenDbConfig={() => setIsConfigModalOpen(true)}
+        onOpenLanding={() => setShowLanding(true)}
       />
 
       {/* Main Content Area */}
@@ -707,8 +835,16 @@ export const App: React.FC = () => {
       <UpgradeModal
         isOpen={isUpgradeModalOpen}
         onClose={() => setIsUpgradeModalOpen(false)}
-        onConfirmUpgrade={handleConfirmUpgrade}
+        onConfirmUpgrade={() => handleOpenCheckout('monthly')}
         reason={upgradeReason}
+      />
+
+      <CheckoutModal
+        isOpen={isCheckoutModalOpen}
+        onClose={() => setIsCheckoutModalOpen(false)}
+        onSuccess={handleCheckoutSuccess}
+        trainerEmail={currentUser?.email || null}
+        defaultPlan={checkoutDefaultPlan}
       />
 
       <ProfileModal

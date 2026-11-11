@@ -1,5 +1,5 @@
 import React from 'react';
-import { Settings, Cloud, CloudOff, LogOut, LogIn } from 'lucide-react';
+import { Settings, Cloud, CloudOff, LogOut, LogIn, Globe } from 'lucide-react';
 import { PersonalProfile } from '../types';
 
 interface HeaderProps {
@@ -12,6 +12,7 @@ interface HeaderProps {
   onSignOut?: () => void;
   onOpenAuth?: () => void;
   onOpenDbConfig?: () => void;
+  onOpenLanding?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -24,6 +25,7 @@ export const Header: React.FC<HeaderProps> = ({
   onSignOut,
   onOpenAuth,
   onOpenDbConfig,
+  onOpenLanding,
 }) => {
   const isPro = profile.plan === 'pro';
 
@@ -111,6 +113,16 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <LogIn className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Entrar</span>
+            </button>
+          )}
+
+          {onOpenLanding && (
+            <button
+              onClick={onOpenLanding}
+              className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-900 transition"
+              title="Página de Apresentação / Planos"
+            >
+              <Globe className="w-4 h-4" />
             </button>
           )}
 

@@ -6,12 +6,14 @@ interface AuthScreenProps {
   onLoginSuccess: (user: any) => void;
   onContinueGuest: () => void;
   onOpenConfig: () => void;
+  onViewLanding?: () => void;
 }
 
 export const AuthScreen: React.FC<AuthScreenProps> = ({
   onLoginSuccess,
   onContinueGuest,
   onOpenConfig,
+  onViewLanding,
 }) => {
   const [tab, setTab] = useState<'login' | 'register' | 'forgot'>('login');
   const [name, setName] = useState('');
@@ -426,8 +428,19 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
           )}
         </div>
 
-        {/* Demo / Guest mode fallback */}
-        <div className="mt-4 text-center space-y-2">
+        {/* Demo / Guest mode fallback & Landing Page */}
+        <div className="mt-4 text-center space-y-2.5">
+          {onViewLanding && (
+            <div>
+              <button
+                onClick={onViewLanding}
+                className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 transition py-1 px-3 rounded-lg hover:bg-emerald-500/10 border border-emerald-500/20"
+              >
+                Conhecer todos os recursos do FitCoach Pro →
+              </button>
+            </div>
+          )}
+
           <button
             onClick={onContinueGuest}
             className="text-xs text-zinc-400 hover:text-zinc-200 transition py-1 px-3 rounded-lg hover:bg-zinc-900 border border-transparent hover:border-zinc-800"
